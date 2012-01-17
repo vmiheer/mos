@@ -82,6 +82,9 @@ int MOS::gd_service(Cpu *c){
 void MOS::pd_service(Cpu *c)
 {
 	(c->si)=0;
+	ilines++;
+	if(ilines>itlines)
+		h_service(c);
 //	if((c->si) & 2)
 //		(c->si)^=2;
 	//& again
@@ -104,26 +107,34 @@ void MOS::pd_service(Cpu *c)
 void MOS::h_service(Cpu *c)
 {
 	c->si=0;
-	if(((char*)(&c->ir))[0]=='H')
+	if(((char*)(&c->ir))[0]!=0)
 	{
+		//if h_service wasn't called first time
+		//verify condition as it fails in case of less no of data cards
 		//cpu has encountered atleast 1 halt instruction now we are ignoring
 		//remaining data cards
 		while(gd_service(c)!=end_card);
 	}
 	//next card is either amj or our os may power off
-	int card=gd_service(c);
-	if(card==amj_card){
-		int i=0;
+	int card;
+	while((card=gd_service(c))!=amj_card); //this will cause power off
+	int i=0;
+	((char*)&c->ir)[2]=i+'0';
+	((char*)&c->ir)[3]=0+'0';
+	while((card=gd_service(c))!=dta_card){
+		i++;
 		((char*)&c->ir)[2]=i+'0';
 		((char*)&c->ir)[3]=0+'0';
-		while((card=gd_service(c))!=dta_card){
-			i++;
-			((char*)&c->ir)[2]=i+'0';
-			((char*)&c->ir)[3]=0+'0';
-		}
 	}
 	if(card==dta_card)
 	{
+		//we have forgotten remaining initialization
+		c->ir=0;//sould we clean memory again?
+		c->ip=0;
+		c->acc=0;
+		c->c=0;
+		c->si=0;
+		ilines=0;
 		iinstructions=0; //initialize the count
 		return;
 	}
