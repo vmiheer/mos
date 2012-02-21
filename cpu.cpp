@@ -8,22 +8,32 @@
 #include "cpu.h"
 
 Cpu::Cpu() {
-	// TODO Auto-generated constructor stub
 
 }
 Cpu::Cpu(Memory *mm,MOS *os)
 {
 	m=mm;
-	this->os=os;
+	pmu=new Mmu(mm);
 	ip=0;
 	acc=0;
 	c=0;
 	ir=0;
 	si=3;
 	m=mm;
+	mode=real;
 }
-Cpu::~Cpu() {
+void Cpu::set_mode(int mode,int pagetable_baseaddr)
+{
+	pmu->set_mode(mode);
+	this->mode=mode;
+}
 
+void Cpu::decode()
+{
+}
+
+Cpu::~Cpu() {
+	delete pmu;
 }
 void Cpu::fetch()
 {

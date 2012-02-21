@@ -9,7 +9,7 @@
 #define MEMORY_H_
 
 class Memory {
-	int mm[100];
+	int mm[300];	//increased memory
 public:
 	int read(int address);
 	void write(int address,int data);

@@ -6,18 +6,35 @@
 #include "mos.h"
 
 MOS::MOS() {
+	c=0;
+	m=0;
 }
 MOS::~MOS() {
 
 }
 void MOS::check(Cpu *c){
-	this->c=c;
-	this->m=c->m;
+	if(unlikely(!(this->c)))
+	{
+		this->c=c;
+		this->m=c->m;
+		if(likely(c->mode==Cpu::real)){
+			basereg=rand()%30;
+			//pick random address for setting pagetable
+			int init=0;
+			((char*)&init)[0]='-';
+			((char*)&init)[1]='0';
+			((char*)&init)[2]='0';
+			((char*)&init)[3]='1';
+			for (int i=0;i<10;i++)
+				c->m->write(basereg+i,init);
+			c->set_mode(Cpu::prot,basereg);
+		}
+	}
 	iinstructions++;
 	if(iinstructions>itinstructions)
 	{
 		// print 2 blank lines to the output file
-		h_service(c);
+		h_service();
 	}
 	if(!c->si)
 	{
@@ -25,20 +42,20 @@ void MOS::check(Cpu *c){
 	}
 	switch (c->si)
 	{
-	case 1 :gd_service(c);
+	case 1 :gd_service();
 			break;
-	case 2 :pd_service(c);
+	case 2 :pd_service();
 			break;
-	case 3 :h_service(c);
+	case 3 :h_service();
 			break;
 	}
 }
-int MOS::gd_service(Cpu *c){
+int MOS::gd_service(){
 //	int temp=(c->si);
 //	if((temp & 1))
 //		(c->si)=(temp)^1;
 	(c->si)=0;
-	if((cr->read(sys_ibuff))==cr->out_of_cards)
+	if((cr->read(sys_ibuff))==CardReader::out_of_cards)
 	{
 		pr->~LinePrinter();
 		cr->~CardReader();
@@ -79,12 +96,12 @@ int MOS::gd_service(Cpu *c){
 		return prog_card;
 	}
 }
-void MOS::pd_service(Cpu *c)
+void MOS::pd_service()
 {
 	(c->si)=0;
 	ilines++;
 	if(ilines>itlines)
-		h_service(c);
+		h_service();
 //	if((c->si) & 2)
 //		(c->si)^=2;
 	//& again
@@ -104,7 +121,13 @@ void MOS::pd_service(Cpu *c)
 	}
 	pr->print(sys_obuff);
 }
-void MOS::h_service(Cpu *c)
+MOS::MOS(LinePrinter *lnpr,CardReader *crd)
+{
+	c=0;
+	cr = crd;
+	pr = lnpr;
+}
+void MOS::h_service()
 {
 	c->si=0;
 	if(((char*)(&c->ir))[0]!=0)
@@ -113,15 +136,19 @@ void MOS::h_service(Cpu *c)
 		//verify condition as it fails in case of less no of data cards
 		//cpu has encountered atleast 1 halt instruction now we are ignoring
 		//remaining data cards
-		while(gd_service(c)!=end_card);
+		sys_obuff[0]=0;
+		pr->print(sys_obuff);
+		sys_obuff[0]=0;
+		pr->print(sys_obuff);
+		while(gd_service()!=end_card);
 	}
 	//next card is either amj or our os may power off
 	int card;
-	while((card=gd_service(c))!=amj_card); //this will cause power off
+	while((card=gd_service())!=amj_card); //this will cause power off
 	int i=0;
 	((char*)&c->ir)[2]=i+'0';
 	((char*)&c->ir)[3]=0+'0';
-	while((card=gd_service(c))!=dta_card){
+	while((card=gd_service())!=dta_card){
 		i++;
 		((char*)&c->ir)[2]=i+'0';
 		((char*)&c->ir)[3]=0+'0';
