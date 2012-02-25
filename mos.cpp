@@ -6,13 +6,12 @@
 #include "mos.h"
 
 MOS::MOS() {
-	c=0;
-	m=0;
 }
 MOS::~MOS() {
 
 }
-void MOS::check(Cpu *c){
+void MOS::check(Cpu *c)
+{
 	if(unlikely(!(this->c)))
 	{
 		this->c=c;
@@ -27,7 +26,8 @@ void MOS::check(Cpu *c){
 			((char*)&init)[3]='1';
 			for (int i=0;i<10;i++)
 				c->m->write(basereg+i,init);
-			c->set_mode(Cpu::prot,basereg);
+//			c->set_mode(Cpu::prot,basereg);
+//change mode once real mode is working
 		}
 	}
 	iinstructions++;

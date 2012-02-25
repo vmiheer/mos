@@ -22,10 +22,9 @@ int main() {
 	Cpu c(&m,&os);
 	while(1){
 		c.fetch();
+		c.decode();
 		c.execute();
 		os.check(&c);
 	}
-//	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
-//	ifstream i("../");
 	return 0;
 }

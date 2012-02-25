@@ -1,7 +1,7 @@
 #include "memory.h"
 #include<string.h>
 Memory::Memory() {
-	memset(mm,0,100*sizeof(int));
+	memset(mm,0,300*sizeof(int));
 }
 int Memory::read(int address)
 {

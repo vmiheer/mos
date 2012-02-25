@@ -28,19 +28,23 @@ void Cpu::set_mode(int mode,int pagetable_baseaddr)
 	this->mode=mode;
 }
 
-void Cpu::decode()
-{
-}
-
 Cpu::~Cpu() {
 	delete pmu;
 }
 void Cpu::fetch()
 {
-	ir=(*m).read(ip);				// base address of the program card must be known
+
+	mar=pmu->to_physical(ip);
+	ir=(*m).read(mar);				// base address of the program card must be known
 	ip++;
 }
-void Cpu::execute(){
+void Cpu::decode()
+{
+	if(si||0)	return;
+	mar=pmu->to_physical(ir);
+}
+void Cpu::execute()
+{
 	int instruction;
 	if(si || 0)
 	{
@@ -48,91 +52,91 @@ void Cpu::execute(){
 		return;
 	}
 	if(((char*)&ir)[0] =='G' && ((char*)&ir)[1] =='D')
+	{
+		instruction=gd;
+	}
+	else if(((char*)&ir)[0] =='P' && ((char*)&ir)[1] =='D')
+	{
+		instruction=pd;
+	}
+	else if(((char*)&ir)[0] =='L' && ((char*)&ir)[1] =='R')
+	{
+		instruction=lr;
+	}
+	else if(((char*)&ir)[0] =='S' && ((char*)&ir)[1] =='R')
+	{
+		instruction=sr;
+	}
+	else if(((char*)&ir)[0] =='C' && ((char*)&ir)[1] =='R')
+	{
+		instruction=cr;
+	}
+	else if(((char*)&ir)[0] =='B' && ((char*)&ir)[1] =='T')
+	{
+		instruction=bt;
+	}
+	else if(((char*)&ir)[0] =='H')
+	{
+		instruction=h;
+	}
+	else
+	{
+		//raise exception for invalid instuction
+		//generate a fault
+	}
+	switch(instruction)
+	{
+		case gd:
 		{
-			instruction=gd;
+			si=1;
 		}
-		else if(((char*)&ir)[0] =='P' && ((char*)&ir)[1] =='D')
+		break;
+		case pd:
 		{
-			instruction=pd;
+			si=2;
 		}
-		else if(((char*)&ir)[0] =='L' && ((char*)&ir)[1] =='R')
+		break;
+		case lr:
 		{
-			instruction=lr;
+//			int addr=((((char *)& ir)[2])-'0')*10;
+//			addr+=((((char *)& ir)[3])-'0');
+			acc=(*m).read(mar);
 		}
-		else if(((char*)&ir)[0] =='S' && ((char*)&ir)[1] =='R')
+		break;
+		case sr:
 		{
-			instruction=sr;
-		}
-		else if(((char*)&ir)[0] =='C' && ((char*)&ir)[1] =='R')
-		{
-			instruction=cr;
-		}
-		else if(((char*)&ir)[0] =='B' && ((char*)&ir)[1] =='T')
-		{
-			instruction=bt;
-		}
-		else if(((char*)&ir)[0] =='H')
-		{
-			instruction=h;
-		}
-		else
-		{
-			//raise exception for invalid instuction
-			//generate a fault
-		}
-		switch(instruction)
-		{
-			case gd:
-			{
-				si=1;
-			}
-			break;
-			case pd:
-			{
-				si=2;
-			}
-			break;
-			case lr:
-			{
-				int addr=((((char *)& ir)[2])-'0')*10;
-				addr+=((((char *)& ir)[3])-'0');
-				acc=(*m).read(addr);
-			}
-			break;
-			case sr:
-			{
 
-				int addr=((((char *)& ir)[2])-'0')*10;
-				addr+=((((char *)& ir)[3])-'0');
-				(*m).write(addr,acc);
-			}
-			break;
-			case cr:
-			{
-				int addr=((((char *)& ir)[2])-'0')*10;
-				addr+=((((char *)& ir)[3])-'0');
-				if((((*m).read(addr))==acc))
-				{
-					c=1;
-				}
-				else
-					c=0;
-			}
-			break;
-			case bt:
-			{
-				if(c)
-				{
-					int addr=((((char *)& ir)[2])-'0')*10;
-					addr+=((((char *)& ir)[3])-'0');
-					ip=addr;
-				}
-			}
-			break;
-			case h:
-			{
-				si=3;
-			}
-			break;
+//			int addr=((((char *)& ir)[2])-'0')*10;
+//			addr+=((((char *)& ir)[3])-'0');
+			(*m).write(mar,acc);
 		}
+		break;
+		case cr:
+		{
+//			int addr=((((char *)& ir)[2])-'0')*10;
+//			addr+=((((char *)& ir)[3])-'0');
+			if((((*m).read(mar))==acc))
+			{
+				c=1;
+			}
+			else
+				c=0;
+		}
+		break;
+		case bt:
+		{
+			if(c)
+			{
+//				int addr=((((char *)& ir)[2])-'0')*10;
+//				addr+=((((char *)& ir)[3])-'0');
+				ip=mar;
+			}
+		}
+		break;
+		case h:
+		{
+			si=3;
+		}
+		break;
+	}
 }
