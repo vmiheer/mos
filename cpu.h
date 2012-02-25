@@ -17,13 +17,14 @@ class Cpu {
 	int acc;	//accumulator
 	char c;		//c flag
 	int ir;
-	int si;
+	int si,pi,ioi,ti;
 	Memory *m;
 	Mmu *pmu;
 	long clk;
 	int mar;
 	int mbr;
 	int mode;
+	int instruction;
 	Cpu();
 public:
 	Cpu(Memory *mm,MOS *os);
@@ -40,6 +41,11 @@ public:
 	static const int h=6;
 	static const int real=0;
 	static const int prot=1;
+	static const int operand_fault=1;
+	static const int operation_fault=2;
+	static const int page_fault=4;	//FIXME:i want bit masking here and
+									//Operation and operand error are possible
+									//Simultaneously
 	friend class MOS;
 	virtual ~Cpu();
 };

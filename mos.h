@@ -24,6 +24,7 @@ class MOS {
 public:
 	int gd_service();//interrupt handlers for
 	void pd_service();//si=1,2,3 respectively
+	void al_service();//allocator
 	void h_service();
 	void check(Cpu *c);
 	static const int amj_card=0;

@@ -10,6 +10,10 @@ MOS::MOS() {
 MOS::~MOS() {
 
 }
+void MOS::al_service()
+{
+
+}
 void MOS::check(Cpu *c)
 {
 	if(unlikely(!(this->c)))
@@ -26,8 +30,7 @@ void MOS::check(Cpu *c)
 			((char*)&init)[3]='1';
 			for (int i=0;i<10;i++)
 				c->m->write(basereg+i,init);
-//			c->set_mode(Cpu::prot,basereg);
-//change mode once real mode is working
+			c->set_mode(Cpu::prot,basereg);
 		}
 	}
 	iinstructions++;
@@ -40,6 +43,8 @@ void MOS::check(Cpu *c)
 	{
 		return;
 	}
+	//TODO:Same switch case for ti pi...
+	//Call al_service from it
 	switch (c->si)
 	{
 	case 1 :gd_service();
@@ -129,7 +134,7 @@ MOS::MOS(LinePrinter *lnpr,CardReader *crd)
 }
 void MOS::h_service()
 {
-	c->si=0;
+	c->si=c->ti=c->ioi=c->pi=0;
 	if(((char*)(&c->ir))[0]!=0)
 	{
 		//if h_service wasn't called first time
@@ -148,6 +153,19 @@ void MOS::h_service()
 	int i=0;
 	((char*)&c->ir)[2]=i+'0';
 	((char*)&c->ir)[3]=0+'0';
+
+	//Reinitialize page table for each new process
+	//FIXME:We can acctually shouldn't do this.
+	//This will break multiprocessing...
+	int init=0;
+	((char*)&init)[0]='-';
+	((char*)&init)[1]='0';
+	((char*)&init)[2]='0';
+	((char*)&init)[3]='1';
+	for (int i=0;i<10;i++)
+		c->m->write(basereg+i,init);
+//	c->set_mode(Cpu::prot,basereg);
+
 	while((card=gd_service())!=dta_card){
 		i++;
 		((char*)&c->ir)[2]=i+'0';

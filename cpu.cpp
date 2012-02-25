@@ -19,12 +19,15 @@ Cpu::Cpu(Memory *mm,MOS *os)
 	c=0;
 	ir=0;
 	si=3;
+	ioi=pi=ti=0;
+
 	m=mm;
 	mode=real;
 }
 void Cpu::set_mode(int mode,int pagetable_baseaddr)
 {
 	pmu->set_mode(mode);
+	pmu->set_base(pagetable_baseaddr);
 	this->mode=mode;
 }
 
@@ -35,24 +38,29 @@ void Cpu::fetch()
 {
 
 	mar=pmu->to_physical(ip);
+	if(mar<0){
+		pi|=page_fault;		//loading is done by os someone is trying to fetching
+						//from unallocated (other's) page kill it...
+		return;
+	}
 	ir=(*m).read(mar);				// base address of the program card must be known
 	ip++;
 }
 void Cpu::decode()
 {
-	if(si||0)	return;
+	if(si||pi)	return;
+	char *t=(char*)&ir;
+	//TODO:CHeck instruction format and set pi
+	//if(isalpha(t[0]) && isalpha(t[1]))
+
 	mar=pmu->to_physical(ir);
-}
-void Cpu::execute()
-{
-	int instruction;
-	if(si || 0)
+	if(mar<0)
 	{
-		ip--;
-		return;
+		pi|=page_fault;
 	}
 	if(((char*)&ir)[0] =='G' && ((char*)&ir)[1] =='D')
 	{
+		if(mar<0)	pi|=page_fault;
 		instruction=gd;
 	}
 	else if(((char*)&ir)[0] =='P' && ((char*)&ir)[1] =='D')
@@ -81,8 +89,18 @@ void Cpu::execute()
 	}
 	else
 	{
+		pi|=operation_fault;
 		//raise exception for invalid instuction
 		//generate a fault
+	}
+
+}
+void Cpu::execute()
+{
+	if(si || 0)
+	{
+		ip--;
+		return;
 	}
 	switch(instruction)
 	{
@@ -98,23 +116,17 @@ void Cpu::execute()
 		break;
 		case lr:
 		{
-//			int addr=((((char *)& ir)[2])-'0')*10;
-//			addr+=((((char *)& ir)[3])-'0');
+
 			acc=(*m).read(mar);
 		}
 		break;
 		case sr:
 		{
-
-//			int addr=((((char *)& ir)[2])-'0')*10;
-//			addr+=((((char *)& ir)[3])-'0');
 			(*m).write(mar,acc);
 		}
 		break;
 		case cr:
 		{
-//			int addr=((((char *)& ir)[2])-'0')*10;
-//			addr+=((((char *)& ir)[3])-'0');
 			if((((*m).read(mar))==acc))
 			{
 				c=1;
@@ -127,8 +139,6 @@ void Cpu::execute()
 		{
 			if(c)
 			{
-//				int addr=((((char *)& ir)[2])-'0')*10;
-//				addr+=((((char *)& ir)[3])-'0');
 				ip=mar;
 			}
 		}
