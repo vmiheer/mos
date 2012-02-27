@@ -20,7 +20,6 @@ Cpu::Cpu(Memory *mm,MOS *os)
 	ir=0;
 	si=3;
 	ioi=pi=ti=0;
-
 	m=mm;
 	mode=real;
 }
@@ -36,7 +35,8 @@ Cpu::~Cpu() {
 }
 void Cpu::fetch()
 {
-
+	if(si||pi||ti)
+		return;
 	mar=pmu->to_physical(ip);
 	if(mar<0){
 		pi|=page_fault;		//loading is done by os someone is trying to fetching
@@ -48,11 +48,22 @@ void Cpu::fetch()
 }
 void Cpu::decode()
 {
-	if(si||pi)	return;
+	if(si||pi||ti)
+	{
+		return;
+	}
 	char *t=(char*)&ir;
-	//TODO:CHeck instruction format and set pi
-	//if(isalpha(t[0]) && isalpha(t[1]))
-
+	if(~(isalpha(t[0]) && isalpha(t[1])))
+	{
+		//This is optional additional checint k
+		pi|=operation_fault;
+		return;
+	}
+	if(~(isdigit(t[2]) && isdigit(t[3])))
+	{
+		pi|=operand_fault;
+		return;
+	}
 	mar=pmu->to_physical(ir);
 	if(mar<0)
 	{
@@ -60,7 +71,6 @@ void Cpu::decode()
 	}
 	if(((char*)&ir)[0] =='G' && ((char*)&ir)[1] =='D')
 	{
-		if(mar<0)	pi|=page_fault;
 		instruction=gd;
 	}
 	else if(((char*)&ir)[0] =='P' && ((char*)&ir)[1] =='D')
@@ -97,9 +107,9 @@ void Cpu::decode()
 }
 void Cpu::execute()
 {
-	if(si || 0)
+	if(si || pi||ti)
 	{
-		ip--;
+//		ip--;
 		return;
 	}
 	switch(instruction)

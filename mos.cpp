@@ -10,9 +10,45 @@ MOS::MOS() {
 MOS::~MOS() {
 
 }
-void MOS::al_service()
+void MOS :: al_service()
 {
-
+	if(c->pi != Cpu::page_fault)
+		return;
+	int flag=0;
+	int page_no;
+	while(flag != 1)
+	{
+		page_no = rand() % 30;	// This will generate a random number between 0 to 29
+		int Index,PGNO;
+		int bse = c->pmu->get_base();
+		for(int i = 0 ;i < 10;i++)
+		{
+			Index = bse + i;
+			PGNO = m->read(Index);
+			if(   ( (((char*)(&PGNO))[2] - '0') * 10 + (((char*)(&PGNO))[3] - '0')  ) == page_no )
+			{
+				flag = 1;
+			}
+		}
+		if(flag == 1)
+		{
+			flag = 0;
+			continue;
+		}
+		else
+		{
+			break;
+		}
+	}
+	// Put the entry of this page in the page table
+	int temp = 0;
+	((char*)(&temp))[0] = '0';
+	((char*)(&temp))[1] = '0';
+	((char*)(&temp))[2] = (page_no/10)+'0';
+	((char*)(&temp))[3] = (page_no%10)+'0';
+//	((char*)(&temp))[2] =  ((char*)(&page_no))[1];
+//	((char*)(&temp))[3] =  ((char*)(&page_no))[0];
+	m->write((c->pmu->get_base() + (((char*)(&c->ir))[2]-'0')) , temp );
 }
 void MOS::check(Cpu *c)
 {
@@ -22,6 +58,7 @@ void MOS::check(Cpu *c)
 		this->m=c->m;
 		if(likely(c->mode==Cpu::real)){
 			basereg=rand()%30;
+			basereg=basereg*10;
 			//pick random address for setting pagetable
 			int init=0;
 			((char*)&init)[0]='-';
@@ -33,18 +70,104 @@ void MOS::check(Cpu *c)
 			c->set_mode(Cpu::prot,basereg);
 		}
 	}
+	if(!((bool)(c->si || c->pi || c->ti)))
+	{
+		return;
+	}
 	iinstructions++;
 	if(iinstructions>itinstructions)
 	{
 		// print 2 blank lines to the output file
+		NoOfErrors++;
+		error[NoOfErrors]=3;
 		h_service();
 	}
-	if(!c->si)
+
+	if(c->ti == 0 && c->si == 1)
 	{
-		return;
+		gd_service();
 	}
-	//TODO:Same switch case for ti pi...
+	else if(c->ti == 0 && c->si == 2)
+	{
+		pd_service();
+	}
+	else if(c->ti == 0 && c->si == 3)
+	{
+		NoOfErrors++;
+		error[NoOfErrors] = 0;
+		h_service();
+	}
+	else if(c->ti == 2 && c->si == 1)
+	{
+		NoOfErrors++;
+		error[NoOfErrors] = 3;
+		h_service();
+	}
+	else if(c->ti == 2 && c->si == 2)
+	{
+		pd_service();
+		NoOfErrors++;
+		error[NoOfErrors] = 3;
+		h_service();
+	}
+	else if(c->ti == 2 && c->si == 3)
+	{
+		h_service();
+	}
+	else if(c->ti == 0 && c->pi == Cpu::operation_fault)
+	{
+		NoOfErrors++;
+		error[NoOfErrors] = 4;
+		h_service();
+	}
+	else if(c->ti == 0 && c->pi == Cpu::operand_fault)
+	{
+		NoOfErrors++;
+		error[NoOfErrors] = 5;
+		h_service();
+	}
+	else if(c->ti == 0 && c->pi == Cpu::page_fault)
+	{
+//		if((((char*)&(this->c->ir))[0] =='G' && ((char*)&(this->c->ir))[1] =='D') || (((char*)&(this->c->ir))[0] =='S' && ((char*)&(this->c->ir))[1] =='R'))
+		if(c->instruction==Cpu::gd || c->instruction==Cpu::sr)
+		{
+			al_service();
+//			c->ir = base;
+			//gd_service();
+		}
+		else
+		{
+			NoOfErrors++;
+			error[NoOfErrors] = 6;
+			h_service();
+		}
+
+	}
+	else if(c->ti == 2 && c->pi == 1)
+	{
+		NoOfErrors++;
+		error[NoOfErrors] = 3;
+		NoOfErrors++;
+		error[NoOfErrors] = 4;
+		h_service();
+	}
+	else if(c->ti == 2 && c->pi == 2)
+	{
+		NoOfErrors++;
+		error[NoOfErrors] = 3;
+		NoOfErrors++;
+		error[NoOfErrors] = 5;
+		h_service();
+	}
+	else if(c->ti == 2 && c->pi == 3)
+	{
+		NoOfErrors++;
+		error[NoOfErrors] = 3;
+		h_service();
+	}
+
 	//Call al_service from it
+/*
 	switch (c->si)
 	{
 	case 1 :gd_service();
@@ -53,7 +176,7 @@ void MOS::check(Cpu *c)
 			break;
 	case 3 :h_service();
 			break;
-	}
+	}*/
 }
 int MOS::gd_service(){
 //	int temp=(c->si);
@@ -91,12 +214,11 @@ int MOS::gd_service(){
 		return end_card;
 	}
 	else{
-		//a mistake again!!!
-		//int base=((((char *)(&(c->ir)))[3])-'0')*10 + (((((char *)(&c->ir))[4]))-'0');
-		int base=((((char *)(&(c->ir)))[2])-'0')*10 + (((((char *)(&c->ir))[3]))-'0');
+		int base;
+		base = ( c->pmu->get_base() ) + (  ((char*)(&(c->ir)))[2] - '0' ) ;
 		for(int i=0;i<10;i++)
 		{
-			m->write((base + i),((int*)(sys_ibuff))[i]);
+			m->write((base * 10 + i),((int*)(sys_ibuff))[i]);
 		}
 		return prog_card;
 	}
@@ -131,12 +253,19 @@ MOS::MOS(LinePrinter *lnpr,CardReader *crd)
 	c=0;
 	cr = crd;
 	pr = lnpr;
+	NoOfErrors = -1;
 }
 void MOS::h_service()
 {
 	c->si=c->ti=c->ioi=c->pi=0;
+
 	if(((char*)(&c->ir))[0]!=0)
 	{
+		while(NoOfErrors>=0)
+		{
+			strcpy(sys_obuff,e[error[NoOfErrors--]].c_str());
+			pr->print(sys_obuff);
+		}
 		//if h_service wasn't called first time
 		//verify condition as it fails in case of less no of data cards
 		//cpu has encountered atleast 1 halt instruction now we are ignoring
@@ -181,6 +310,7 @@ void MOS::h_service()
 		c->si=0;
 		ilines=0;
 		iinstructions=0; //initialize the count
+		NoOfErrors=-1;
 		return;
 	}
 	// read next card.... if it is the '$end' card,,, halt

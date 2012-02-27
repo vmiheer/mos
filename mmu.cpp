@@ -12,6 +12,7 @@ Mmu::Mmu() {
 	base=0;
 }
 Mmu::Mmu(Memory *m){
+	this->m=m;
 	mode=Cpu::real;
 	base=0;
 
