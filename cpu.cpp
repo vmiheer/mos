@@ -37,10 +37,11 @@ void Cpu::fetch()
 {
 	if(si||pi||ti)
 		return;
+//	instruction=fe;
 	mar=pmu->to_physical(ip);
 	if(mar<0){
 		pi|=page_fault;		//loading is done by os someone is trying to fetching
-						//from unallocated (other's) page kill it...
+							//from unallocated (other's) page kill it...
 		return;
 	}
 	ir=(*m).read(mar);				// base address of the program card must be known
@@ -52,14 +53,15 @@ void Cpu::decode()
 	{
 		return;
 	}
+	instruction=de;
 	char *t=(char*)&ir;
-	if(~(isalpha(t[0]) && isalpha(t[1])))
+	if(!(isalpha(t[0]) && isalpha(t[1])))
 	{
 		//This is optional additional checint k
 		pi|=operation_fault;
 		return;
 	}
-	if(~(isdigit(t[2]) && isdigit(t[3])))
+	if(!((isdigit(t[2]) && isdigit(t[3])) || (t[0]=='H')))
 	{
 		pi|=operand_fault;
 		return;
@@ -107,9 +109,10 @@ void Cpu::decode()
 }
 void Cpu::execute()
 {
-	if(si || pi||ti)
+	if(si|| pi||ti)
 	{
-//		ip--;
+		if(pi)
+			ip--;
 		return;
 	}
 	switch(instruction)
@@ -149,7 +152,7 @@ void Cpu::execute()
 		{
 			if(c)
 			{
-				ip=mar;
+				ip=(((char*)&ir)[2]-'0')*10+(((char*)&ir)[3]-'0');
 			}
 		}
 		break;

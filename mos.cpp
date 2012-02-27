@@ -10,24 +10,25 @@ MOS::MOS() {
 MOS::~MOS() {
 
 }
-void MOS :: al_service()
+void MOS::al_service()
 {
-	if(c->pi != Cpu::page_fault)
-		return;
+//	if(c->pi != Cpu::page_fault)
+//		return;
 	int flag=0;
 	int page_no;
 	while(flag != 1)
 	{
 		page_no = rand() % 30;	// This will generate a random number between 0 to 29
-		int Index,PGNO;
+		int Index,tpgno;
 		int bse = c->pmu->get_base();
 		for(int i = 0 ;i < 10;i++)
 		{
 			Index = bse + i;
-			PGNO = m->read(Index);
-			if(   ( (((char*)(&PGNO))[2] - '0') * 10 + (((char*)(&PGNO))[3] - '0')  ) == page_no )
+			tpgno = m->read(Index);
+			if(((((char*)(&tpgno))[2] - '0') * 10 + (((char*)(&tpgno))[3] - '0')) == page_no || page_no==basereg/10)
 			{
-				flag = 1;
+				flag=1;
+				break;
 			}
 		}
 		if(flag == 1)
@@ -49,6 +50,9 @@ void MOS :: al_service()
 //	((char*)(&temp))[2] =  ((char*)(&page_no))[1];
 //	((char*)(&temp))[3] =  ((char*)(&page_no))[0];
 	m->write((c->pmu->get_base() + (((char*)(&c->ir))[2]-'0')) , temp );
+	if(c->pi & Cpu::page_fault){
+		c->pi^=Cpu::page_fault;
+	}
 }
 void MOS::check(Cpu *c)
 {
@@ -214,11 +218,17 @@ int MOS::gd_service(){
 		return end_card;
 	}
 	else{
-		int base;
-		base = ( c->pmu->get_base() ) + (  ((char*)(&(c->ir)))[2] - '0' ) ;
+		while((c->mar=c->pmu->to_physical(c->ir))==-1)
+		{
+			al_service();
+		}
+//		int base;
+//		base = ( c->pmu->get_base() ) + (  ((char*)(&(c->ir)))[2] - '0' ) ;
+
 		for(int i=0;i<10;i++)
 		{
-			m->write((base * 10 + i),((int*)(sys_ibuff))[i]);
+//			m->write((base * 10 + i),((int*)(sys_ibuff))[i]);
+			m->write(c->mar+i,((int*)(sys_ibuff))[i]);
 		}
 		return prog_card;
 	}
@@ -232,11 +242,12 @@ void MOS::pd_service()
 //	if((c->si) & 2)
 //		(c->si)^=2;
 	//& again
-	int base=((((char *)(&(c->ir)))[2])-'0')*10 + (((((char *)(&c->ir))[3]))-'0');
+//	int base=((((char *)(&(c->ir)))[2])-'0')*10 + (((((char *)(&c->ir))[3]))-'0');
+	c->mar=c->pmu->to_physical(c->ir);
 	int i=0;
 	for(int x=0;x<10;x++)
 	{
-		int tempdata=(m->read(base + x));
+		int tempdata=(m->read(c->mar + x));
 		sys_obuff[i] = ((char*)(&tempdata))[0];
 		i++;
 		sys_obuff[i] = ((char*)(&tempdata))[1];
@@ -276,16 +287,8 @@ void MOS::h_service()
 		pr->print(sys_obuff);
 		while(gd_service()!=end_card);
 	}
-	//next card is either amj or our os may power off
-	int card;
-	while((card=gd_service())!=amj_card); //this will cause power off
-	int i=0;
-	((char*)&c->ir)[2]=i+'0';
-	((char*)&c->ir)[3]=0+'0';
 
 	//Reinitialize page table for each new process
-	//FIXME:We can acctually shouldn't do this.
-	//This will break multiprocessing...
 	int init=0;
 	((char*)&init)[0]='-';
 	((char*)&init)[1]='0';
@@ -293,13 +296,25 @@ void MOS::h_service()
 	((char*)&init)[3]='1';
 	for (int i=0;i<10;i++)
 		c->m->write(basereg+i,init);
-//	c->set_mode(Cpu::prot,basereg);
+	c->set_mode(Cpu::prot,basereg);
 
+	//next card is either amj or our os may power off
+	int card;
+	while((card=gd_service())!=amj_card); //this will cause power off
+
+
+	//__block__	don't seperate
+	int i=0;
+	((char*)&c->ir)[2]=i+'0';
+	((char*)&c->ir)[3]=0+'0';
 	while((card=gd_service())!=dta_card){
 		i++;
 		((char*)&c->ir)[2]=i+'0';
 		((char*)&c->ir)[3]=0+'0';
 	}
+	//__end__block__	
+	
+	
 	if(card==dta_card)
 	{
 		//we have forgotten remaining initialization

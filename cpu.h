@@ -39,6 +39,8 @@ public:
 	static const int cr=4;
 	static const int bt=5;
 	static const int h=6;
+	static const int fe=7;
+	static const int de=8;
 	static const int real=0;
 	static const int prot=1;
 	static const int operand_fault=1;
