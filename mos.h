@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <vector>
+#include <string>
+using namespace std;
 class Cpu;
 class MOS {
 	char sys_ibuff[45],sys_obuff[45];
@@ -25,8 +28,7 @@ class MOS {
 	MOS();
 	int error[10];
 	int NoOfErrors;
-	string e[7];
-	//,"Out Of Data\n","Line Limit Exceeded\n","Time Limit Exceeded\n" ,"Operation Code Error\n","Operand Error\n","Invalid Page Fault\n"};
+	std::vector<std::string> e;
 public:
 	int gd_service();//interrupt handlers for
 	void pd_service();//si=1,2,3 respectively

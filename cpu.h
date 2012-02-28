@@ -10,6 +10,9 @@
 #include "memory.h"
 #include"mos.h"
 #include "mmu.h"
+#include <vector>
+#include <string>
+using namespace std;
 class MOS;
 class Mmu;
 class Cpu {

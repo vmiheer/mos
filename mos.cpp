@@ -238,7 +238,11 @@ void MOS::pd_service()
 	(c->si)=0;
 	ilines++;
 	if(ilines>itlines)
+	{
+		NoOfErrors++;
+		error[NoOfErrors]=2;
 		h_service();
+	}
 //	if((c->si) & 2)
 //		(c->si)^=2;
 	//& again
@@ -265,6 +269,13 @@ MOS::MOS(LinePrinter *lnpr,CardReader *crd)
 	cr = crd;
 	pr = lnpr;
 	NoOfErrors = -1;
+	e.push_back("No error\n");
+	e.push_back("Out Of Data\n");
+	e.push_back("Line Limit Exceeded\n");
+	e.push_back("Time Limit Exceeded\n");
+	e.push_back("Operation Code Error\n");
+	e.push_back("Operand Error\n");
+	e.push_back("Invalid Page Fault\n");
 }
 void MOS::h_service()
 {

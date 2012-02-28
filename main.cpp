@@ -14,6 +14,8 @@ using namespace std;
 #include "cpu.h"
 #include "lineprinter.h"
 #include "cardreader.h"
+#include <vector>
+#include <string>
 int main() {
 	Memory m;
 	LinePrinter lnpr("outfile");

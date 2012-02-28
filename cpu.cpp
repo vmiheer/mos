@@ -55,12 +55,12 @@ void Cpu::decode()
 	}
 	instruction=de;
 	char *t=(char*)&ir;
-	if(!(isalpha(t[0]) && isalpha(t[1])))
-	{
+//	if(!(isalpha(t[0]) && isalpha(t[1])))
+//	{
 		//This is optional additional checint k
-		pi|=operation_fault;
-		return;
-	}
+//		pi|=operation_fault;
+//		return;
+//	}
 	if(!((isdigit(t[2]) && isdigit(t[3])) || (t[0]=='H')))
 	{
 		pi|=operand_fault;
