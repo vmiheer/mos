@@ -74,10 +74,6 @@ void MOS::check(Cpu *c)
 			c->set_mode(Cpu::prot,basereg);
 		}
 	}
-	if(!((bool)(c->si || c->pi || c->ti)))
-	{
-		return;
-	}
 	iinstructions++;
 	if(iinstructions>itinstructions)
 	{
@@ -86,6 +82,11 @@ void MOS::check(Cpu *c)
 		error[NoOfErrors]=3;
 		h_service();
 	}
+	if(!((bool)(c->si || c->pi || c->ti)))
+	{
+		return;
+	}
+
 
 	if(c->ti == 0 && c->si == 1)
 	{
@@ -269,13 +270,13 @@ MOS::MOS(LinePrinter *lnpr,CardReader *crd)
 	cr = crd;
 	pr = lnpr;
 	NoOfErrors = -1;
-	e.push_back("No error\n");
-	e.push_back("Out Of Data\n");
-	e.push_back("Line Limit Exceeded\n");
-	e.push_back("Time Limit Exceeded\n");
-	e.push_back("Operation Code Error\n");
-	e.push_back("Operand Error\n");
-	e.push_back("Invalid Page Fault\n");
+	e.push_back("ERROR CODE:1  No error\n");
+	e.push_back("ERROR CODE:2  Out Of Data\n");
+	e.push_back("ERROR CODE:3  Line Limit Exceeded\n");
+	e.push_back("ERROR CODE:4  Time Limit Exceeded\n");
+	e.push_back("ERROR CODE:5  Operation Code Error\n");
+	e.push_back("ERROR CODE:6  Operand Error\n");
+	e.push_back("ERROR CODE:7  Invalid Page Fault\n");
 }
 void MOS::h_service()
 {
@@ -283,8 +284,16 @@ void MOS::h_service()
 
 	if(((char*)(&c->ir))[0]!=0)
 	{
+		char tmp[40]={0};
+		char mp[5]={0};
+		char *t=(char*)&c->ir;
+		sprintf(mp,"%c%c%c%c",t[0],t[1],t[2],t[3]);
+		sprintf(tmp,"ip:%d\tir:%s\t%d\t%d\n",c->ip,mp,iinstructions,ilines);
+		strcpy(sys_obuff,tmp);
+		pr->print(sys_obuff);
 		while(NoOfErrors>=0)
 		{
+
 			strcpy(sys_obuff,e[error[NoOfErrors--]].c_str());
 			pr->print(sys_obuff);
 		}

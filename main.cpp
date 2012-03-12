@@ -16,6 +16,8 @@ using namespace std;
 #include "cardreader.h"
 #include <vector>
 #include <string>
+using namespace std;
+
 int main() {
 	Memory m;
 	LinePrinter lnpr("outfile");
