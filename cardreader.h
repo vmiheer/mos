@@ -9,6 +9,7 @@
 #define CARDREADER_H_
 #include <string>
 #include <fstream>
+#include <ios>
 using std::ifstream;
 using std::string;
 class CardReader {

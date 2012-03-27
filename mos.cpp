@@ -12,8 +12,6 @@ MOS::~MOS() {
 }
 void MOS::al_service()
 {
-//	if(c->pi != Cpu::page_fault)
-//		return;
 	int flag=0;
 	int page_no;
 	while(flag != 1)
@@ -47,8 +45,6 @@ void MOS::al_service()
 	((char*)(&temp))[1] = '0';
 	((char*)(&temp))[2] = (page_no/10)+'0';
 	((char*)(&temp))[3] = (page_no%10)+'0';
-//	((char*)(&temp))[2] =  ((char*)(&page_no))[1];
-//	((char*)(&temp))[3] =  ((char*)(&page_no))[0];
 	m->write((c->pmu->get_base() + (((char*)(&c->ir))[2]-'0')) , temp );
 	if(c->pi & Cpu::page_fault){
 		c->pi^=Cpu::page_fault;
@@ -90,7 +86,12 @@ void MOS::check(Cpu *c)
 
 	if(c->ti == 0 && c->si == 1)
 	{
-		gd_service();
+		//The program may run out of data cards
+		if(gd_service()==end_card){
+			NoOfErrors++;
+			error[NoOfErrors]=1;
+			h_service();
+		}
 	}
 	else if(c->ti == 0 && c->si == 2)
 	{
@@ -133,12 +134,9 @@ void MOS::check(Cpu *c)
 	}
 	else if(c->ti == 0 && c->pi == Cpu::page_fault)
 	{
-//		if((((char*)&(this->c->ir))[0] =='G' && ((char*)&(this->c->ir))[1] =='D') || (((char*)&(this->c->ir))[0] =='S' && ((char*)&(this->c->ir))[1] =='R'))
 		if(c->instruction==Cpu::gd || c->instruction==Cpu::sr)
 		{
 			al_service();
-//			c->ir = base;
-			//gd_service();
 		}
 		else
 		{
@@ -170,23 +168,8 @@ void MOS::check(Cpu *c)
 		error[NoOfErrors] = 3;
 		h_service();
 	}
-
-	//Call al_service from it
-/*
-	switch (c->si)
-	{
-	case 1 :gd_service();
-			break;
-	case 2 :pd_service();
-			break;
-	case 3 :h_service();
-			break;
-	}*/
 }
 int MOS::gd_service(){
-//	int temp=(c->si);
-//	if((temp & 1))
-//		(c->si)=(temp)^1;
 	(c->si)=0;
 	if((cr->read(sys_ibuff))==CardReader::out_of_cards)
 	{
@@ -223,12 +206,8 @@ int MOS::gd_service(){
 		{
 			al_service();
 		}
-//		int base;
-//		base = ( c->pmu->get_base() ) + (  ((char*)(&(c->ir)))[2] - '0' ) ;
-
 		for(int i=0;i<10;i++)
 		{
-//			m->write((base * 10 + i),((int*)(sys_ibuff))[i]);
 			m->write(c->mar+i,((int*)(sys_ibuff))[i]);
 		}
 		return prog_card;
@@ -244,10 +223,7 @@ void MOS::pd_service()
 		error[NoOfErrors]=2;
 		h_service();
 	}
-//	if((c->si) & 2)
-//		(c->si)^=2;
-	//& again
-//	int base=((((char *)(&(c->ir)))[2])-'0')*10 + (((((char *)(&c->ir))[3]))-'0');
+
 	c->mar=c->pmu->to_physical(c->ir);
 	int i=0;
 	for(int x=0;x<10;x++)
@@ -291,10 +267,13 @@ void MOS::h_service()
 		sprintf(tmp,"ip:%d\tir:%s\t%d\t%d\n",c->ip,mp,iinstructions,ilines);
 		strcpy(sys_obuff,tmp);
 		pr->print(sys_obuff);
-		while(NoOfErrors>=0)
+		int tempCount=NoOfErrors;
+		bool outOffData=false;
+		while(tempCount>=0)
 		{
-
-			strcpy(sys_obuff,e[error[NoOfErrors--]].c_str());
+			if(error[tempCount]==1)
+				outOffData=true;
+			strcpy(sys_obuff,e[error[tempCount--]].c_str());
 			pr->print(sys_obuff);
 		}
 		//if h_service wasn't called first time
@@ -305,7 +284,8 @@ void MOS::h_service()
 		pr->print(sys_obuff);
 		sys_obuff[0]=0;
 		pr->print(sys_obuff);
-		while(gd_service()!=end_card);
+		if(!outOffData)
+			while(gd_service()!=end_card);
 	}
 
 	//Reinitialize page table for each new process
